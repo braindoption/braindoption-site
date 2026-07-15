@@ -100,17 +100,34 @@ async function processSubmission(submission, settings, skills, env) {
 
   const urgency = classification.urgency_level;
   const tone = classification.tone;
-  const language = classification.language;
+  const language = classification.language; // final decision, after cross-check
+  const languageConflict = classification.language_conflict === true;
 
   const replyTemplate =
     (skill.tone_variants && (skill.tone_variants[tone] || skill.tone_variants.default)) ||
     "Thank you for your inquiry. We will respond shortly.";
 
-  const visitorMessage = fillTemplate(replyTemplate, {
+  let visitorMessage = fillTemplate(replyTemplate, {
     firstName: submission.firstName || "there",
     inquiryType: submission.inquiryType || "your inquiry",
     sla_response_time_hours: skill.sla_response_time_hours ?? settings.sla_response_time_hours,
   });
+
+  // Append a single clarifying question if the classifier flagged one.
+  if (classification.needs_clarifying_question && classification.clarifying_question) {
+    visitorMessage += ` ${classification.clarifying_question}`;
+  }
+
+  // Locked language rule: message + country signals cross-checked during
+  // classification. If they agreed on French, translate the reply. If they
+  // conflicted or were ambiguous, classify() already defaulted `language`
+  // to "en" — here we just add the one polite bilingual invite line.
+  if (language === "fr") {
+    visitorMessage = await translateToFrench(visitorMessage, env);
+  } else if (languageConflict) {
+    visitorMessage +=
+      " / N'hésitez pas à nous répondre en français si vous préférez échanger dans cette langue.";
+  }
 
   const shouldEmailEscalate =
     skill.allowed_action !== "auto_reply" &&
@@ -118,6 +135,7 @@ async function processSubmission(submission, settings, skills, env) {
 
   return {
     language,
+    language_conflict: languageConflict,
     tone,
     matched_skill_id: skill.id,
     confidence: classification.confidence,
@@ -201,14 +219,36 @@ Bands: low 0-30, medium 31-60, high 61-85, critical 86+
 Supported languages: ${JSON.stringify(settings.supported_languages)}
 Default language: ${settings.default_language}
 
+LANGUAGE DECISION (do this carefully):
+  - message_signal: the language the visitor actually wrote their message in.
+  - country_signal: "fr" if the stated country is a primarily French-speaking
+    country (e.g. France, Belgium, Switzerland, Canada-Quebec context, several
+    African nations), otherwise "en".
+  - If message_signal and country_signal AGREE on "fr", set "language": "fr"
+    and "language_conflict": false.
+  - If they agree on "en", set "language": "en" and "language_conflict": false.
+  - If they DISAGREE or country is ambiguous/unknown, default "language" to
+    "en" and set "language_conflict": true.
+
+CLARIFYING QUESTION:
+  - If the inquiry is beyond what a generic acknowledgment can address (e.g.
+    vague, multi-part, or missing key detail needed to route it), set
+    "needs_clarifying_question": true and provide exactly ONE short,
+    specific "clarifying_question" (in English; it will be translated if
+    needed). Otherwise set "needs_clarifying_question": false and
+    "clarifying_question": null.
+
 Return exactly this JSON shape:
 {
   "language": "en" | "fr",
+  "language_conflict": true | false,
   "tone": "default" | "warm" | "concise" | "urgent",
   "matched_skill_id": "string",
   "confidence": 0.0,
   "urgency_score": 0,
   "urgency_level": "low" | "medium" | "high" | "critical",
+  "needs_clarifying_question": true | false,
+  "clarifying_question": "string or null",
   "analysis_note": "one or two sentence internal note for the human reviewer"
 }`;
 
@@ -237,4 +277,38 @@ Return exactly this JSON shape:
 
   const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
   return JSON.parse(cleaned);
+}
+
+// ---------------------------------------------------------------------------
+// French translation (used only when message + country signals agree on "fr")
+// ---------------------------------------------------------------------------
+
+async function translateToFrench(englishText, env) {
+  const prompt = `Translate the following business email message into natural, professional French. Keep names and numbers unchanged. Return ONLY the translated text, no preamble, no quotes.
+
+${englishText}`;
+
+  const response = await fetch(ANTHROPIC_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: CLASSIFIER_MODEL,
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    // If translation fails for any reason, fail safe to the English text
+    // rather than breaking the whole pipeline for this submission.
+    return englishText;
+  }
+
+  const data = await response.json();
+  const textBlock = data.content.find((b) => b.type === "text");
+  return textBlock ? textBlock.text.trim() : englishText;
 }
