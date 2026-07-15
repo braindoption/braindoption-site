@@ -52,7 +52,7 @@ async function handle(context) {
       };
 
       await env.FORM_SUBMISSIONS.put(key.name, JSON.stringify(updated));
-      results.push({ key: key.name, urgency: outcome.urgency, action: outcome.action });
+      results.push({ key: key.name, urgency: outcome.urgency_level, action: outcome.action });
     }
 
     return new Response(
