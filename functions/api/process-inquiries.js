@@ -11,9 +11,11 @@
 //   - FORM_SUBMISSIONS  (KV namespace)
 //   - AGENT_CONFIG      (KV namespace)
 //   - ANTHROPIC_API_KEY (environment secret)
+//   - RESEND_API_KEY    (environment secret) — NEW for Phase 10
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 export async function onRequestPost(context) {
   return handle(context);
@@ -43,12 +45,14 @@ async function handle(context) {
       if (submission.processed) continue; // already handled
 
       const outcome = await processSubmission(submission, settings, skills, env);
+      const emailResult = await sendEmails(submission, outcome, settings, env);
 
       const updated = {
         ...submission,
         processed: true,
         processedAt: new Date().toISOString(),
         agent: outcome,
+        emailed: emailResult,
       };
 
       await env.FORM_SUBMISSIONS.put(key.name, JSON.stringify(updated));
@@ -199,7 +203,6 @@ ${JSON.stringify(
     organisation: submission.organisation,
     role: submission.role,
     country: submission.country,
-    email: submission.email,
     inquiryType: submission.inquiryType,
     message: submission.message,
   },
@@ -221,9 +224,13 @@ Default language: ${settings.default_language}
 
 LANGUAGE DECISION (do this carefully):
   - message_signal: the language the visitor actually wrote their message in.
-  - country_signal: "fr" if the stated country is a primarily French-speaking
-    country (e.g. France, Belgium, Switzerland, Canada-Quebec context, several
-    African nations), otherwise "en".
+  - country_signal: "fr" if the stated "country" field is a primarily
+    French-speaking country (e.g. France, Belgium, Switzerland, Canada-Quebec
+    context, several African nations), otherwise "en".
+  - IMPORTANT: base country_signal ONLY on the "country" field's text value.
+    Do NOT use the visitor's email domain/TLD (e.g. ".fr", ".ca") as a
+    signal — email domains are frequently unrelated to where someone is
+    based and must be ignored entirely for this decision.
   - If message_signal and country_signal AGREE on "fr", set "language": "fr"
     and "language_conflict": false.
   - If they agree on "en", set "language": "en" and "language_conflict": false.
@@ -311,4 +318,81 @@ ${englishText}`;
   const data = await response.json();
   const textBlock = data.content.find((b) => b.type === "text");
   return textBlock ? textBlock.text.trim() : englishText;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 10 — Email sending via Resend
+// ---------------------------------------------------------------------------
+
+async function sendEmails(submission, outcome, settings, env) {
+  const result = { visitor_sent: false, owner_sent: false, errors: [] };
+
+  // 1. Always send the acknowledgment to the visitor.
+  try {
+    await sendResendEmail(env, {
+      from: `${settings.agent_name} <${settings.agent_identity_email}>`,
+      to: submission.email,
+      subject: `Re: Your inquiry to BrainDoption (${submission.inquiryType || "General Inquiry"})`,
+      text: `${outcome.visitor_message}\n\n${settings.agent_signature}`,
+    });
+    result.visitor_sent = true;
+  } catch (err) {
+    result.errors.push(`visitor email failed: ${err.message}`);
+  }
+
+  // 2. Escalate to the owner only if urgency warrants it (per settings).
+  if (outcome.escalation.email) {
+    try {
+      const urgencyTag = outcome.urgency_level.toUpperCase();
+      const bodyLines = [
+        `Urgency: ${outcome.urgency_level} (score: ${outcome.urgency_score})`,
+        `Response deadline: ${outcome.escalation.deadline}`,
+        `Reason: ${outcome.escalation.reason || "n/a"}`,
+        ``,
+        `Agent analysis: ${outcome.escalation.analysis}`,
+        ``,
+        `--- Full inquiry ---`,
+        `Name: ${submission.firstName || ""} ${submission.lastName || ""}`,
+        `Organisation: ${submission.organisation || ""}`,
+        `Role: ${submission.role || ""}`,
+        `Country: ${submission.country || ""}`,
+        `Email: ${submission.email || ""}`,
+        `Inquiry type: ${submission.inquiryType || ""}`,
+        `Message: ${submission.message || ""}`,
+        ``,
+        `--- Agent's drafted reply to visitor ---`,
+        outcome.visitor_message,
+      ];
+
+      await sendResendEmail(env, {
+        from: `${settings.agent_name} <${settings.agent_identity_email}>`,
+        to: settings.owner_email,
+        subject: `[${urgencyTag}] New inquiry — ${submission.inquiryType || "General Inquiry"} — ${submission.firstName || ""} ${submission.lastName || ""}`,
+        text: bodyLines.join("\n"),
+      });
+      result.owner_sent = true;
+    } catch (err) {
+      result.errors.push(`owner escalation email failed: ${err.message}`);
+    }
+  }
+
+  return result;
+}
+
+async function sendResendEmail(env, { from, to, subject, text }) {
+  const response = await fetch(RESEND_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({ from, to, subject, text }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Resend API error (${response.status}): ${errText}`);
+  }
+
+  return response.json();
 }
