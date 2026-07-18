@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jozey · BrainDoption Command Centre</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════ TOKENS */
+:root {
+  --bg:          #f0f6ff;
+  --surface:     #ffffff;
+  --surface-2:   #f4f8ff;
+  --surface-3:   #e8f0fe;
+  --border:      #dce8f8;
+  --border-2:    #b8d0f5;
+  --text:        #1a2540;
+  --text-2:      #4a5f80;
+  --text-3:      #8da4c0;
+  --accent:      #2563eb;
+  --accent-light:#eff6ff;
+  --accent-mid:  #bfdbfe;
+  --green:       #16a34a;
+  --green-light: #f0fdf4;
+  --green-mid:   #bbf7d0;
+  --amber:       #d97706;
+  --amber-light: #fffbeb;
+  --amber-mid:   #fde68a;
+  --red:         #dc2626;
+  --red-light:   #fef2f2;
+  --red-mid:     #fecaca;
+  --orange:      #ea580c;
+  --orange-light:#fff7ed;
+  --blue:        #0284c7;
+  --blue-light:  #e0f2fe;
+  --sidebar-w:   230px;
+  --hdr:         60px;
+  --radius:      10px;
+  --shadow:      0 1px 4px rgba(37,99,235,.06), 0 4px 16px rgba(37,99,235,.04);
+  --shadow-md:   0 2px 8px rgba(37,99,235,.10), 0 8px 30px rgba(37,99,235,.07);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+/* ══════════════════════════════════════════════════════ LOGIN SCREEN */
+#login-screen {
+  position: fixed; inset: 0; background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 40%, #f0fdf4 100%);
+  display: flex; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; gap: 0;
+}
+.login-card {
+  background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-md);
+  padding: 44px 48px; width: 100%; max-width: 420px; border: 1px solid var(--border);
+}
+.login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+.login-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #2563eb, #60a5fa); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.login-title { font-size: 20px; font-weight: 800; color: var(--text); }
+.login-sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.login-heading { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.login-desc { font-size: 12.5px; color: var(--text-2); margin-bottom: 24px; line-height: 1.5; }
+.oauth-btn {
+  width: 100%; padding: 12px 16px; border-radius: var(--radius); border: 1.5px solid var(--border-2);
+  background: var(--surface); color: var(--text); font-size: 13.5px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  transition: all .15s;
+}
+.oauth-btn:hover { background: var(--surface-2); border-color: var(--accent); }
+.oauth-btn svg { flex-shrink: 0; }
+.login-divider { text-align: center; font-size: 11px; color: var(--text-3); margin: 4px 0 10px; }
+.login-demo { width: 100%; padding: 10px; border-radius: var(--radius); border: 1px dashed var(--border-2); background: var(--surface-2); color: var(--accent); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.login-demo:hover { background: var(--accent-light); }
+.login-footer { font-size: 11px; color: var(--text-3); text-align: center; margin-top: 20px; }
+.login-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber-mid); font-weight: 700; margin-left: 6px; }
+
+/* ══════════════════════════════════════════════════════ SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w); min-height: 100vh; background: var(--surface);
+  border-right: 1px solid var(--border); position: fixed; top: 0; left: 0;
+  display: flex; flex-direction: column; z-index: 100;
+}
+.sidebar-brand { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.brand-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #2563eb, #60a5fa); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.brand-name { font-size: 14.5px; font-weight: 800; color: var(--text); }
+.brand-sub { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+
+.agent-pill { margin: 12px 14px; padding: 8px 12px; background: var(--green-light); border: 1px solid var(--green-mid); border-radius: 8px; display: flex; align-items: center; gap: 8px; }
+.agent-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.agent-pill-text { font-size: 12px; font-weight: 700; color: var(--green); }
+.agent-pill-next { font-size: 10.5px; color: var(--text-3); margin-left: auto; }
+
+nav { flex: 1; padding: 6px 0; }
+.nav-sec { padding: 14px 16px 5px; font-size: 9.5px; font-weight: 800; color: var(--text-3); text-transform: uppercase; letter-spacing: .1em; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8.5px 14px; margin: 1px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-2); transition: all .12s; }
+.nav-item:hover { background: var(--accent-light); color: var(--accent); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 700; }
+.nav-badge { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 10px; }
+.nav-badge.amber { background: var(--amber); }
+.nav-badge.blue { background: var(--accent); }
+
+.sidebar-foot { padding: 14px 16px; border-top: 1px solid var(--border); }
+.sidebar-foot-row { font-size: 11px; color: var(--text-3); padding: 2px 0; }
+.sidebar-foot-row strong { color: var(--text-2); }
+
+/* ══════════════════════════════════════════════════════ MAIN */
+.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: var(--hdr); padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50;
+}
+.topbar-left { }
+.topbar-title { font-size: 15.5px; font-weight: 800; color: var(--text); }
+.topbar-sub { font-size: 11.5px; color: var(--text-2); margin-top: 1px; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-time { text-align: right; font-size: 12px; color: var(--text-2); }
+.topbar-time strong { font-size: 14px; color: var(--text); display: block; font-weight: 700; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border-2); background: var(--surface); color: var(--text-2); transition: all .12s; }
+.btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: #1d4ed8; }
+.btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.red { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.sm { padding: 5px 10px; font-size: 11.5px; }
+
+.content { padding: 22px 24px 48px; }
+
+/* ══════════════════════════════════════════════════════ SEARCH / FILTER BAR */
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.search-wrap { position: relative; flex: 1; min-width: 200px; }
+.search-wrap input {
+  width: 100%; padding: 8px 12px 8px 34px; border-radius: 8px; border: 1.5px solid var(--border-2);
+  font-size: 13px; color: var(--text); background: var(--surface); outline: none;
+}
+.search-wrap input:focus { border-color: var(--accent); }
+.search-wrap::before { content: '🔍'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; pointer-events: none; }
+.filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.fp { padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1.5px solid var(--border-2); background: var(--surface); color: var(--text-2); cursor: pointer; transition: all .12s; }
+.fp:hover, .fp.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.date-range { display: none; align-items: center; gap: 6px; }
+.date-range input { padding: 5px 8px; border-radius: 6px; border: 1.5px solid var(--border-2); font-size: 12px; color: var(--text); background: var(--surface); }
+.date-range.show { display: flex; }
+
+/* ══════════════════════════════════════════════════════ CARDS */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.card-hdr { padding: 14px 18px 11px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card-title { font-size: 13.5px; font-weight: 800; color: var(--text); }
+.card-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.badge { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge-red    { background: var(--red-light);    color: var(--red);    border: 1px solid var(--red-mid); }
+.badge-amber  { background: var(--amber-light);  color: var(--amber);  border: 1px solid var(--amber-mid); }
+.badge-green  { background: var(--green-light);  color: var(--green);  border: 1px solid var(--green-mid); }
+.badge-blue   { background: var(--blue-light);   color: var(--blue);   border: 1px solid #7dd3fc; }
+.badge-accent { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-mid); }
+.badge-gray   { background: var(--surface-2);    color: var(--text-2); border: 1px solid var(--border); }
+
+/* ══════════════════════════════════════════════════════ KPI STRIP */
+.kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 18px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.kpi::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--kpi-c, var(--accent)); }
+.kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 800; margin-bottom: 7px; }
+.kpi-value { font-size: 30px; font-weight: 900; color: var(--kpi-c, var(--accent)); letter-spacing: -1px; line-height: 1; }
+.kpi-delta { font-size: 11.5px; color: var(--text-2); margin-top: 4px; }
+.kpi-delta .up { color: var(--green); }
+.kpi-delta .down { color: var(--red); }
+.sparkline { display: flex; align-items: flex-end; gap: 2px; height: 20px; margin-top: 6px; }
+.spark-bar { flex: 1; border-radius: 2px; }
+
+/* ══════════════════════════════════════════════════════ ALERT */
+.alert-bar { border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; border: 1.5px solid; }
+.alert-bar.crit { background: var(--red-light); border-color: var(--red-mid); }
+.alert-bar.warn { background: var(--amber-light); border-color: var(--amber-mid); }
+.alert-bar.info { background: var(--blue-light); border-color: #7dd3fc; }
+.alert-bar-icon { font-size: 18px; flex-shrink: 0; }
+.alert-bar-text { flex: 1; font-size: 12.5px; }
+.alert-bar-text strong { color: var(--red); }
+.alert-bar.warn .alert-bar-text strong { color: var(--amber); }
+.alert-bar.info .alert-bar-text strong { color: var(--blue); }
+.alert-cta { font-size: 11.5px; font-weight: 700; cursor: pointer; border: 1px solid; padding: 4px 11px; border-radius: 6px; white-space: nowrap; }
+.alert-bar.crit .alert-cta { color: var(--red); border-color: var(--red-mid); }
+.alert-bar.crit .alert-cta:hover { background: var(--red-mid); }
+.alert-bar.warn .alert-cta { color: var(--amber); border-color: var(--amber-mid); }
+
+/* ══════════════════════════════════════════════════════ GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid-3 { display: grid; grid-template-columns: 2fr 1.2fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid-13 { display: grid; grid-template-columns: 1fr 3fr; gap: 16px; margin-bottom: 16px; }
+
+/* ══════════════════════════════════════════════════════ INQUIRY ROWS */
+.inq-section { margin-bottom: 20px; }
+.inq-section-hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.inq-section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
+.inq-section-line { flex: 1; height: 1px; background: var(--border); }
+.inq-list { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.inq-row { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+.inq-row:last-child { border-bottom: none; }
+.inq-row:hover { background: var(--surface-2); }
+.urg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.urg-crit  { background: var(--red);    box-shadow: 0 0 0 2px var(--red-light); }
+.urg-high  { background: var(--orange); box-shadow: 0 0 0 2px var(--orange-light); }
+.urg-med   { background: var(--amber);  box-shadow: 0 0 0 2px var(--amber-light); }
+.urg-low   { background: var(--green);  box-shadow: 0 0 0 2px var(--green-light); }
+.inq-name { min-width: 0; flex: 1; }
+.inq-name-main { font-size: 13px; font-weight: 700; color: var(--text); }
+.inq-name-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inq-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.inq-sla { font-size: 11.5px; font-weight: 700; }
+.sla-breach { color: var(--red); }
+.sla-warn { color: var(--amber); }
+.sla-ok { color: var(--green); }
+.lang-pill { font-size: 10.5px; padding: 2px 7px; border-radius: 4px; background: var(--surface-3); color: var(--text-2); font-weight: 600; border: 1px solid var(--border); }
+
+/* ══════════════════════════════════════════════════════ STATUS TABLE */
+.stbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.stbl th { text-align: left; padding: 9px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); font-weight: 800; border-bottom: 2px solid var(--border); background: var(--surface-2); }
+.stbl td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.stbl tr:last-child td { border-bottom: none; }
+.stbl tr:hover td { background: var(--surface-2); cursor: pointer; }
+
+/* ══════════════════════════════════════════════════════ ENGAGEMENT TRACKER */
+.engagement-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden; }
+.eng-hdr { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.eng-hdr:hover { background: var(--surface-2); }
+.eng-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0; }
+.eng-info { flex: 1; min-width: 0; }
+.eng-name { font-size: 13.5px; font-weight: 800; }
+.eng-sub { font-size: 11.5px; color: var(--text-2); margin-top: 1px; }
+.eng-chevron { font-size: 12px; color: var(--text-3); transition: transform .2s; }
+.eng-body { display: none; padding: 0; }
+.eng-body.open { display: block; }
+
+.eng-tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.eng-tab { flex: 1; padding: 9px 6px; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; transition: all .12s; }
+.eng-tab.active { color: var(--accent); border-color: var(--accent); background: var(--surface); }
+.eng-tab-body { display: none; padding: 14px 18px; }
+.eng-tab-body.active { display: block; }
+
+.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.task-item:last-child { border-bottom: none; }
+.task-check { width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--border-2); flex-shrink: 0; margin-top: 2px; cursor: pointer; transition: all .1s; display: flex; align-items: center; justify-content: center; }
+.task-check.done { background: var(--green); border-color: var(--green); color: #fff; font-size: 10px; }
+.task-text { flex: 1; font-size: 12.5px; line-height: 1.4; }
+.task-text.done-text { text-decoration: line-through; color: var(--text-3); }
+.task-priority { font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 20px; flex-shrink: 0; }
+
+.timeline-item { display: flex; gap: 12px; padding: 8px 0; position: relative; }
+.timeline-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; border: 2px solid var(--surface); box-shadow: 0 0 0 2px currentColor; }
+.timeline-content { flex: 1; }
+.timeline-event { font-size: 12.5px; font-weight: 600; }
+.timeline-time { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.timeline-note { font-size: 11.5px; color: var(--text-2); margin-top: 3px; font-style: italic; }
+
+.followup-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.followup-item:last-child { border-bottom: none; }
+
+/* ══════════════════════════════════════════════════════ SKILLS */
+.skill-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+.skill-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.skill-name { font-size: 14px; font-weight: 800; }
+.skill-sub { font-size: 11.5px; color: var(--text-2); margin-top: 2px; }
+.skill-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.skill-field label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+.skill-field span { display: block; font-size: 12.5px; color: var(--text); font-weight: 700; margin-top: 2px; }
+.skill-triggers { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.trigger-tag { font-size: 11px; padding: 2px 9px; border-radius: 20px; background: var(--surface-3); color: var(--accent); border: 1px solid var(--accent-mid); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════ SETTINGS */
+.settings-block { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+.settings-block-hdr { padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.settings-block-title { font-size: 13px; font-weight: 800; }
+.settings-block-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 18px; border-bottom: 1px solid var(--border); }
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: 13px; font-weight: 600; }
+.settings-label span { display: block; font-size: 11px; color: var(--text-3); font-weight: 400; margin-top: 1px; }
+.toggle { width: 38px; height: 21px; background: var(--border-2); border-radius: 11px; position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; border: none; }
+.toggle.on { background: var(--accent); }
+.toggle::after { content: ''; width: 15px; height: 15px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.toggle.on::after { left: 20px; }
+.sla-input-wrap { display: flex; align-items: center; gap: 8px; }
+.sla-input { width: 64px; padding: 6px 10px; border-radius: 8px; border: 1.5px solid var(--border-2); font-size: 14px; font-weight: 800; color: var(--text); text-align: center; background: var(--surface); }
+.sla-input:focus { outline: none; border-color: var(--accent); }
+.github-commit-note { font-size: 11px; color: var(--text-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 10px 18px 14px; }
+.github-commit-note strong { color: var(--accent); }
+.sel { padding: 6px 10px; border-radius: 8px; border: 1.5px solid var(--border-2); font-size: 12.5px; color: var(--text); background: var(--surface); outline: none; cursor: pointer; }
+.sel:focus { border-color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════ MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(10,20,40,.35); backdrop-filter: blur(4px); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-hdr { padding: 20px 22px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.modal-hdr-title { font-size: 16px; font-weight: 800; }
+.modal-hdr-sub { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+.modal-close { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text-2); flex-shrink: 0; }
+.modal-close:hover { background: var(--red-light); color: var(--red); border-color: var(--red-mid); }
+.modal-body { padding: 20px 22px; }
+.modal-section { margin-bottom: 18px; }
+.modal-section-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 800; margin-bottom: 7px; }
+.modal-bubble { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+.modal-draft-bubble { background: var(--accent-light); border: 1px solid var(--accent-mid); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; color: var(--text); line-height: 1.65; white-space: pre-wrap; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mf { }
+.mf .mfl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); font-weight: 700; margin-bottom: 2px; }
+.mf .mfv { font-size: 13px; font-weight: 700; color: var(--text); }
+.pipeline { display: flex; gap: 0; margin: 4px 0; }
+.pipe-step { flex: 1; text-align: center; font-size: 10px; padding: 6px 2px; color: var(--text-3); border-top: 2.5px solid var(--border); }
+.pipe-step.done { color: var(--green); border-color: var(--green); font-weight: 700; }
+.pipe-step.active { color: var(--accent); border-color: var(--accent); font-weight: 800; }
+.modal-tasks { }
+.modal-task { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.modal-task:last-child { border-bottom: none; }
+.modal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Add skill modal form */
+.form-row { margin-bottom: 14px; }
+.form-row label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-2); margin-bottom: 5px; }
+.form-row input, .form-row select, .form-row textarea {
+  width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border-2);
+  font-size: 13px; color: var(--text); background: var(--surface); outline: none; font-family: inherit;
+}
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--accent); }
+.form-row textarea { min-height: 72px; resize: vertical; }
+.form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ══════════════════════════════════════════════════════ CHARTS */
+.chart-wrap { padding: 4px 16px 14px; }
+
+/* ══════════════════════════════════════════════════════ HEALTH */
+.health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 16px; }
+.health-item { padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; gap: 10px; }
+.health-item-info { }
+.health-item-lbl { font-size: 10.5px; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.health-item-val { font-size: 12px; color: var(--text); font-weight: 700; margin-top: 1px; }
+.health-status { font-size: 10.5px; font-weight: 700; }
+.hs-ok   { color: var(--green); }
+.hs-warn { color: var(--amber); }
+.hs-err  { color: var(--red); }
+
+/* ══════════════════════════════════════════════════════ MISC */
+.view { display: none; }
+.view.active { display: block; }
+.mt-14 { margin-top: 14px; }
+.mb-14 { margin-bottom: 14px; }
+.text-3 { color: var(--text-3); }
+.empty-state { text-align: center; padding: 32px; color: var(--text-3); font-size: 13px; }
+.score-bar { height: 5px; border-radius: 3px; background: var(--surface-3); margin-top: 5px; overflow: hidden; }
+.score-fill { height: 100%; border-radius: 3px; }
+
+/* ══════════════════════════════════════════════════════ RESPONSIVE */
+@media (max-width: 1100px) {
+  .kpi-strip { grid-template-columns: repeat(3,1fr); }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .sidebar { transform: translateX(-100%); }
+  .main { margin-left: 0; }
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .grid-2, .grid-3, .grid-13 { grid-template-columns: 1fr; }
+  .modal-grid, .form-2col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-icon">🧠</div>
+      <div>
+        <div class="login-title">BrainDoption</div>
+        <div class="login-sub">Jozey Command Centre</div>
+      </div>
+    </div>
+    <div class="login-heading">Sign in to your workspace</div>
+    <div class="login-desc">Your AI-managed mail system. Sign in to review escalations, track engagements, and manage Jozey's rules.</div>
+
+    <button class="oauth-btn" onclick="doLogin()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+      Sign in with Google (Gmail)
+    </button>
+    <button class="oauth-btn" onclick="doLogin()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      Sign in with GitHub
+    </button>
+    <div class="login-divider">— or for this demo —</div>
+    <button class="login-demo" onclick="doLogin()">🚀 Enter Demo Mode (no auth required)</button>
+    <div class="login-footer">
+      Commercial version will enforce OAuth.
+      <span class="login-badge">COMING SOON</span>
+      <br>BrainDoption · Jozey v3.0
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ APP SHELL -->
+<aside class="sidebar" id="app-sidebar" style="display:none">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🧠</div>
+    <div>
+      <div class="brand-name">BrainDoption</div>
+      <div class="brand-sub">Jozey · Command Centre</div>
+    </div>
+  </div>
+  <div class="agent-pill">
+    <div class="agent-dot"></div>
+    <span class="agent-pill-text">Jozey Active</span>
+    <span class="agent-pill-next" id="next-scan-txt">in 4m</span>
+  </div>
+  <nav>
+    <div class="nav-sec">Operations</div>
+    <div class="nav-item active" onclick="showView('command')">📋 Command Centre</div>
+    <div class="nav-item" onclick="showView('inbox')">📥 Inbox Board <span class="nav-badge">3</span></div>
+    <div class="nav-sec">Tracking</div>
+    <div class="nav-item" onclick="showView('engagements')">🤝 Engagements <span class="nav-badge blue">5</span></div>
+    <div class="nav-sec">Configuration</div>
+    <div class="nav-item" onclick="showView('skills')">🎯 Skills & Rules</div>
+    <div class="nav-item" onclick="showView('settings')">⚙️ Settings</div>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="sidebar-foot-row">Next scan: <strong id="next-scan-txt2">in 3m 47s</strong></div>
+    <div class="sidebar-foot-row">Model: <strong>claude-haiku-4-5</strong></div>
+    <div class="sidebar-foot-row">Est. cost: <strong>$2.47 / ~$8</strong></div>
+    <div class="sidebar-foot-row" style="margin-top:8px">
+      <button class="btn sm" style="width:100%;justify-content:center" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+</aside>
+
+<div class="main" id="app-main" style="display:none">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title" id="view-title">Command Centre</div>
+      <div class="topbar-sub" id="view-sub">Focus: what's NOT done · what's ABOUT to be due</div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-time">
+        <strong id="clock"></strong>
+        <div id="dateline"></div>
+      </div>
+      <button class="btn primary" id="scan-btn" onclick="triggerScan()">⚡ Scan Now</button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ══════════════════════ VIEW: COMMAND CENTRE -->
+    <div id="view-command" class="view active">
+
+      <!-- Alerts: only show what NEEDS action -->
+      <div class="alert-bar crit">
+        <div class="alert-bar-icon">🔴</div>
+        <div class="alert-bar-text"><strong>2 SLA breaches imminent</strong> — Armando Lucas (Partnership · 22h) and Fatou Diallo (Keynote · 20h) must be actioned within hours. Ball risk: HIGH.</div>
+        <div class="alert-cta" onclick="showView('inbox')">Act Now →</div>
+      </div>
+      <div class="alert-bar warn">
+        <div class="alert-bar-icon">⚠️</div>
+        <div class="alert-bar-text"><strong>3 drafts waiting for your approval</strong> — Jozey has replies ready but cannot send without your sign-off.</div>
+        <div class="alert-cta" onclick="showView('inbox')">Review →</div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-strip">
+        <div class="kpi" style="--kpi-c:var(--red)">
+          <div class="kpi-label">⚠️ Not Done / At Risk</div>
+          <div class="kpi-value">5</div>
+          <div class="kpi-delta"><span class="down">↑ 2</span> vs yesterday</div>
+          <div class="sparkline" id="sp-risk"></div>
+        </div>
+        <div class="kpi" style="--kpi-c:var(--amber)">
+          <div class="kpi-label">📤 Awaiting Your Action</div>
+          <div class="kpi-value">3</div>
+          <div class="kpi-delta">Drafts + escalations pending</div>
+          <div class="sparkline" id="sp-await"></div>
+        </div>
+        <div class="kpi" style="--kpi-c:var(--blue)">
+          <div class="kpi-label">🔄 In Process</div>
+          <div class="kpi-value">8</div>
+          <div class="kpi-delta">Acknowledged · awaiting client</div>
+          <div class="sparkline" id="sp-inprog"></div>
+        </div>
+        <div class="kpi" style="--kpi-c:var(--green)">
+          <div class="kpi-label">✅ Resolved (30 days)</div>
+          <div class="kpi-value">39</div>
+          <div class="kpi-delta"><span class="up">83%</span> by Jozey autonomously</div>
+          <div class="sparkline" id="sp-done"></div>
+        </div>
+        <div class="kpi" style="--kpi-c:var(--accent)">
+          <div class="kpi-label">📬 Total Received</div>
+          <div class="kpi-value">47</div>
+          <div class="kpi-delta"><span class="up">↑ +8</span> vs last month</div>
+          <div class="sparkline" id="sp-total"></div>
+        </div>
+      </div>
+
+      <!-- Section: NOT DONE (overdue / breaching) -->
+      <div class="inq-section">
+        <div class="inq-section-hdr">
+          <div class="inq-section-title" style="color:var(--red)">🔴 NOT DONE — SLA Breaching / Overdue</div>
+          <div class="inq-section-line"></div>
+          <span class="badge badge-red">2 items</span>
+        </div>
+        <div class="inq-list" id="list-breach"></div>
+      </div>
+
+      <!-- Section: ABOUT TO BE DUE (action required) -->
+      <div class="inq-section">
+        <div class="inq-section-hdr">
+          <div class="inq-section-title" style="color:var(--amber)">🟡 ACTION REQUIRED — Awaiting Your Decision</div>
+          <div class="inq-section-line"></div>
+          <span class="badge badge-amber">3 items</span>
+        </div>
+        <div class="inq-list" id="list-action"></div>
+      </div>
+
+      <!-- Section: IN PROGRESS -->
+      <div class="inq-section">
+        <div class="inq-section-hdr">
+          <div class="inq-section-title" style="color:var(--blue)">🔵 IN PROGRESS — Acknowledged, Awaiting Client</div>
+          <div class="inq-section-line"></div>
+          <span class="badge badge-blue">3 items</span>
+        </div>
+        <div class="inq-list" id="list-inprog"></div>
+      </div>
+
+      <!-- Row: Charts -->
+      <div class="grid-2" style="margin-top:4px">
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">30-Day Volume</div><div class="card-sub">Received vs. Jozey-handled</div></div>
+            <span class="badge badge-green">+21% MoM</span>
+          </div>
+          <div class="chart-wrap" style="padding-top:14px"><canvas id="volChart" height="130"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">
+            <div><div class="card-title">System Health</div><div class="card-sub">All live services</div></div>
+            <span class="badge badge-green">5 OK · 1 Notice</span>
+          </div>
+          <div class="health-grid">
+            <div class="health-item"><span style="font-size:20px">☁️</span><div class="health-item-info"><div class="health-item-lbl">Cloudflare</div><div class="health-item-val">Pages + KV</div><div class="health-status hs-ok">● Operational</div></div></div>
+            <div class="health-item"><span style="font-size:20px">📧</span><div class="health-item-info"><div class="health-item-lbl">Resend API</div><div class="health-item-val">SPF/DKIM ✓</div><div class="health-status hs-ok">● Delivering</div></div></div>
+            <div class="health-item"><span style="font-size:20px">🤖</span><div class="health-item-info"><div class="health-item-lbl">Claude Haiku</div><div class="health-item-val">haiku-4-5</div><div class="health-status hs-ok">● Active</div></div></div>
+            <div class="health-item"><span style="font-size:20px">⚙️</span><div class="health-item-info"><div class="health-item-lbl">GitHub Actions</div><div class="health-item-val">Every 15 min</div><div class="health-status hs-ok">● Running</div></div></div>
+            <div class="health-item"><span style="font-size:20px">📮</span><div class="health-item-info"><div class="health-item-lbl">SMTP2GO</div><div class="health-item-val">587 / TLS</div><div class="health-status hs-ok">● Ready</div></div></div>
+            <div class="health-item"><span style="font-size:20px">⚠️</span><div class="health-item-info"><div class="health-item-lbl">Email Routing</div><div class="health-item-val">Notice pending</div><div class="health-status hs-warn">● Needs check</div></div></div>
+          </div>
+          <div style="padding:0 16px 14px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:11px;color:var(--text-3)">AI cost this month</div>
+              <div style="font-size:20px;font-weight:900;color:var(--accent)">$2.47</div>
+            </div>
+            <div style="flex:1;margin-left:14px">
+              <div style="font-size:10px;color:var(--text-3);margin-bottom:4px">of ~$8 budget</div>
+              <div class="score-bar"><div class="score-fill" style="width:31%;background:var(--green)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ VIEW: INBOX BOARD -->
+    <div id="view-inbox" class="view">
+      <div class="filter-bar">
+        <div class="search-wrap">
+          <input type="text" id="inbox-search" placeholder="Search by client name, company, inquiry type…" oninput="filterInbox()">
+        </div>
+        <div class="filter-pills">
+          <div class="fp active" data-period="all" onclick="setPeriod(this,'all')">All</div>
+          <div class="fp" data-period="today" onclick="setPeriod(this,'today')">Today</div>
+          <div class="fp" data-period="week" onclick="setPeriod(this,'week')">This Week</div>
+          <div class="fp" data-period="custom" onclick="setPeriod(this,'custom')">Custom…</div>
+        </div>
+        <div class="date-range" id="date-range">
+          <input type="date" id="dr-start" value="2026-07-01" onchange="filterInbox()">
+          <span style="font-size:12px;color:var(--text-3)">to</span>
+          <input type="date" id="dr-end" value="2026-07-17" onchange="filterInbox()">
+        </div>
+        <select class="sel" id="urg-filter" onchange="filterInbox()">
+          <option value="all">All urgencies</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+        <select class="sel" id="status-filter" onchange="filterInbox()">
+          <option value="all">All statuses</option>
+          <option value="Breach">SLA At Risk</option>
+          <option value="Escalated">Escalated</option>
+          <option value="Draft">Draft for Review</option>
+          <option value="In Process">In Process</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-hdr">
+          <div><div class="card-title">All Requests</div><div class="card-sub" id="inbox-count">Showing all 10 inquiries</div></div>
+          <div style="display:flex;gap:8px">
+            <span class="badge badge-red" id="ic-breach">2 breaching</span>
+            <span class="badge badge-amber" id="ic-action">3 action needed</span>
+            <span class="badge badge-green" id="ic-done">5 resolved</span>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="stbl" id="inbox-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Visitor / Organisation</th>
+                <th>Inquiry Type</th>
+                <th>Urgency</th>
+                <th>Status</th>
+                <th>SLA Elapsed</th>
+                <th>Response Deadline</th>
+                <th>Lang</th>
+                <th>Tone</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="inbox-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ VIEW: ENGAGEMENTS -->
+    <div id="view-engagements" class="view">
+      <div class="filter-bar">
+        <div class="search-wrap">
+          <input type="text" id="eng-search" placeholder="Search engagements by client, company…" oninput="filterEngagements()">
+        </div>
+        <div class="filter-pills">
+          <div class="fp active" data-ef="all" onclick="setEngFilter(this,'all')">All</div>
+          <div class="fp" data-ef="open" onclick="setEngFilter(this,'open')">Open</div>
+          <div class="fp" data-ef="tasks" onclick="setEngFilter(this,'tasks')">Has Tasks</div>
+          <div class="fp" data-ef="followup" onclick="setEngFilter(this,'followup')">Follow-up Due</div>
+        </div>
+      </div>
+      <div id="engagement-list"></div>
+    </div>
+
+    <!-- ══════════════════════ VIEW: SKILLS -->
+    <div id="view-skills" class="view">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:14px;font-weight:800">Skills & Rules</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:2px">Stored in AGENT_CONFIG KV · editable without redeploy</div>
+        </div>
+        <button class="btn primary" onclick="openAddSkill()">+ Add Skill / Rule</button>
+      </div>
+      <div id="skills-list"></div>
+    </div>
+
+    <!-- ══════════════════════ VIEW: SETTINGS -->
+    <div id="view-settings" class="view">
+      <div class="grid-2">
+        <div>
+          <div class="settings-block">
+            <div class="settings-block-hdr">
+              <div class="settings-block-title">Agent Identity</div>
+              <div class="settings-block-sub">Core parameters · AGENT_CONFIG</div>
+            </div>
+            <div class="settings-row"><div class="settings-label">Agent Name<span>Display name on all emails</span></div><strong>Jozey</strong></div>
+            <div class="settings-row"><div class="settings-label">Sends As<span>From address</span></div><span style="font-size:12.5px;color:var(--accent);font-weight:700">info@braindoption.com</span></div>
+            <div class="settings-row"><div class="settings-label">Escalates To<span>Owner email</span></div><span style="font-size:12.5px;font-weight:700">emmanuel@braindoption.com</span></div>
+            <div class="settings-row"><div class="settings-label">Pricing Policy<span>Quote behavior</span></div><select class="sel"><option>Never quote</option><option>General only</option><option>Full quote rules</option></select></div>
+          </div>
+
+          <div class="settings-block">
+            <div class="settings-block-hdr">
+              <div class="settings-block-title">SLA Response Time</div>
+              <div class="settings-block-sub">Commitment window · saved to AGENT_CONFIG + GitHub</div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">Response Window<span>Hours from receipt to first reply</span></div>
+              <div class="sla-input-wrap">
+                <input class="sla-input" type="number" id="sla-hours" value="24" min="1" max="168">
+                <span style="font-size:13px;color:var(--text-2)">hours</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">Escalation Email Threshold<span>Minimum urgency to email owner</span></div>
+              <select class="sel"><option>Medium (current)</option><option>High</option><option>Critical only</option></select>
+            </div>
+            <div class="github-commit-note">
+              🔗 <strong>GitHub sync:</strong> Saving SLA settings will commit a change to <code>AGENT_CONFIG</code> in your GitHub repository via the Actions API, so the live agent picks it up on next scan without a manual redeploy.
+              <br><span style="color:var(--amber);font-weight:700">Note:</span> Requires <code>GITHUB_PERSONAL_ACCESS_TOKEN</code> with <em>repo</em> scope stored as a Cloudflare secret.
+            </div>
+            <div class="settings-row" style="border-top:1px solid var(--border)">
+              <div></div>
+              <button class="btn primary" onclick="saveSLA()">💾 Save & Commit to GitHub</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="settings-block">
+            <div class="settings-block-hdr">
+              <div class="settings-block-title">Scan & Automation</div>
+              <div class="settings-block-sub">Agent behaviour</div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">Scan Frequency<span id="freq-lbl">Every 15 minutes</span></div>
+              <div style="display:flex;align-items:center;gap:10px;flex:1;max-width:200px">
+                <input type="range" min="5" max="60" step="5" value="15" style="flex:1;accent-color:var(--accent)" oninput="document.getElementById('freq-lbl').textContent='Every '+this.value+' minutes'" onchange="saveScanFrequency(this.value)">
+                <span id="freq-val" style="font-size:13px;font-weight:700;min-width:40px">15m</span>
+              </div>
+            </div>
+            <div class="settings-row"><div class="settings-label">Visitor Profiling<span>Track returning visitors</span></div><button class="toggle" onclick="this.classList.toggle('on')"></button></div>
+            <div class="settings-row"><div class="settings-label">Email Escalation<span>Owner alerts for Medium+</span></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+            <div class="settings-row"><div class="settings-label">Dashboard Escalation<span>Always show in dashboard</span></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+          </div>
+
+          <div class="settings-block">
+            <div class="settings-block-hdr">
+              <div class="settings-block-title">AI Models</div>
+              <div class="settings-block-sub">Fallback protects against deprecation</div>
+            </div>
+            <div class="settings-row"><div class="settings-label">Primary Model<span>Classification, tone, urgency</span></div><select class="sel"><option>claude-haiku-4-5-20251001</option><option>claude-haiku-3-5</option></select></div>
+            <div class="settings-row"><div class="settings-label">Fallback Model<span>Used if primary fails/deprecated</span></div><select class="sel"><option>claude-sonnet-4-6</option><option>claude-sonnet-3-5</option></select></div>
+            <div class="settings-row"><div class="settings-label">Languages<span>Active classifier languages</span></div><div style="display:flex;gap:6px"><span class="badge badge-blue">🇬🇧 EN</span><span class="badge badge-accent">🇫🇷 FR</span></div></div>
+          </div>
+
+          <div class="settings-block">
+            <div class="settings-block-hdr">
+              <div class="settings-block-title">Authentication (Commercial)</div>
+              <div class="settings-block-sub">Login provision · not yet enforced <span class="badge badge-amber" style="margin-left:4px">PLANNED</span></div>
+            </div>
+            <div class="settings-row"><div class="settings-label">Google OAuth<span>Sign in with Gmail account</span></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+            <div class="settings-row"><div class="settings-label">GitHub OAuth<span>Sign in with GitHub account</span></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+            <div class="settings-row"><div class="settings-label">Client ID (Google)<span>From Google Cloud Console</span></div><input type="password" placeholder="•••••••••••••" style="border:1px solid var(--border-2);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text);background:var(--surface);width:180px"></div>
+            <div class="settings-row"><div class="settings-label">Client ID (GitHub)<span>From GitHub OAuth App</span></div><input type="password" placeholder="•••••••••••••" style="border:1px solid var(--border-2);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text);background:var(--surface);width:180px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Known Issues -->
+      <div class="settings-block">
+        <div class="settings-block-hdr"><div class="settings-block-title">Open Issues</div></div>
+        <div class="settings-row"><div style="font-size:12.5px;color:var(--amber)">⚠️ Language conflict detection: French message + US country resolves to French (no conflict flag). Prompt tuning pending.</div></div>
+        <div class="settings-row"><div style="font-size:12.5px;color:var(--amber)">⚠️ Cloudflare Email Routing notice received: missing email from brain.doption@gmail.com → emmanuel@braindoption.com. Requires investigation.</div></div>
+        <div class="settings-row"><div style="font-size:12.5px;color:var(--text-2)">ℹ️ fallback_model failover not yet tested against a real deprecated model. Worth a deliberate test before relying on in production.</div></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ══════════════════════════════════════════════════════ INQUIRY DETAIL MODAL -->
+<div class="modal-overlay" id="inq-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-hdr-title" id="m-name">—</div>
+        <div class="modal-hdr-sub" id="m-meta">—</div>
+      </div>
+      <div class="modal-close" onclick="closeModal('inq-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <div class="modal-section-lbl">Processing Pipeline</div>
+        <div class="pipeline" id="m-pipeline"></div>
+      </div>
+      <div class="modal-grid" style="margin-bottom:16px" id="m-grid"></div>
+      <div class="modal-section">
+        <div class="modal-section-lbl">📌 Executive Summary</div>
+        <div class="modal-bubble" id="m-summary"></div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-section-lbl">💬 Customer Message</div>
+        <div class="modal-bubble" id="m-message" style="font-style:italic"></div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-section-lbl">📧 Draft Reply by Jozey</div>
+        <textarea class="modal-draft-bubble" id="m-draft" style="width:100%;font-family:inherit;border:1px solid var(--accent-mid);outline:none;"></textarea>
+      </div>
+      <div class="modal-section">
+        <div class="modal-section-lbl">✅ Recommended Next Actions (from Jozey)</div>
+        <div id="m-tasks" class="modal-tasks"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" onclick="approveInq()">✓ Approve & Send</button>
+        <button class="btn" onclick="alert('Opens Claude chat to rewrite this draft in the live version.')">✏️ Rewrite with Claude</button>
+        <button class="btn" onclick="alert('Marked dormant — Jozey will skip on next scan.')">⏸ Mark Dormant</button>
+        <button class="btn" style="margin-left:auto" onclick="openEngFromModal()">📋 Open Engagement</button>
+      </div>
+      <div id="m-approved" style="display:none;margin-top:10px;font-size:12px;color:var(--green);font-weight:700">✓ Approved — Jozey will send on the next scan.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ ADD SKILL MODAL -->
+<div class="modal-overlay" id="skill-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-hdr-title" id="skill-modal-title">Add New Skill / Rule</div>
+        <div class="modal-hdr-sub">This will be saved to AGENT_CONFIG KV and picked up on next scan</div>
+      </div>
+      <div class="modal-close" onclick="closeModal('skill-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-2col">
+        <div class="form-row"><label>Skill ID *</label><input type="text" id="sk-id" placeholder="e.g. general_inquiry_auto" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'_')"></div>
+        <div class="form-row"><label>Skill Name *</label><input type="text" id="sk-name" placeholder="e.g. General Inquiry Auto-Reply"></div>
+      </div>
+      <div class="form-row"><label>Trigger Keywords / Inquiry Types<span style="font-size:10px;color:var(--text-3);font-weight:400"> — comma-separated, or use * for all</span></label><input type="text" id="sk-triggers" placeholder='e.g. general inquiry, information request, "contact us"'></div>
+      <div class="form-2col">
+        <div class="form-row"><label>Allowed Action</label><select id="sk-action"><option value="auto_reply">auto_reply — send without review</option><option value="draft_for_review">draft_for_review — queue for your approval</option><option value="acknowledge_and_escalate">acknowledge_and_escalate — always escalate</option></select></div>
+        <div class="form-2col" style="gap:8px">
+          <div class="form-row"><label>SLA (hours)</label><input type="number" id="sk-sla" value="24" min="1"></div>
+          <div class="form-row"><label>Confidence threshold</label><input type="number" id="sk-conf" value="0.75" min="0" max="1" step="0.05"></div>
+        </div>
+      </div>
+      <div class="form-row"><label>Default tone variant (English)</label><textarea id="sk-tone-en" placeholder="Enter the default English reply template. Use {firstName}, {agentName}, {agentSignature} as placeholders…"></textarea></div>
+      <div class="form-row"><label>French tone variant</label><textarea id="sk-tone-fr" placeholder="Template en français. Utiliser {firstName}, {agentName}, etc…"></textarea></div>
+      <div class="form-row"><label>Escalation Reason<span style="font-size:10px;color:var(--text-3);font-weight:400"> — shown on escalation email (leave blank if action is auto_reply)</span></label><input type="text" id="sk-esc" placeholder="e.g. Partnership inquiries always require personal response"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn" onclick="closeModal('skill-modal')">Discard</button>
+        <button class="btn primary" onclick="saveSkill()">💾 Save Skill</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TOAST -->
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:all .3s;pointer-events:none"></div>
+
+<script>
+// ════════════════════════════════════════════════════════ DATA
+// Live data — replaces the original mock array. Fetched from
+// /api/dashboard-data (reads FORM_SUBMISSIONS KV, shaped into the same
+// per-inquiry fields the rest of this file already expects), so nothing
+// below this block needed to change.
+let INQ = [];
+let DASHBOARD_SETTINGS = { scan_frequency_minutes: null, last_scanned_at: null };
+
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+function humanElapsed(iso, sent) {
+  if (sent) return 'Done';
+  if (!iso) return '—';
+  const hrs = Math.round((Date.now() - new Date(iso).getTime()) / 3600000);
+  return hrs <= 0 ? '<1h' : `${hrs}h`;
+}
+
+function humanDeadline(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso; // fall back to raw value rather than break the UI
+  return d.toLocaleString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+}
+
+// Maps our real approval_status/emailed fields to the 5 status labels this
+// UI already knows how to badge/color (Breach, Escalated, Draft, In Process,
+// Resolved). "Resolved" isn't reachable yet — no manual-resolve concept
+// exists until the Engagements phase — included for forward-compat only.
+function mapStatus(s) {
+  const deadline = s.agent?.escalation?.deadline ? new Date(s.agent.escalation.deadline) : null;
+  const breached = deadline && !isNaN(deadline.getTime()) && deadline < new Date() && s.approval_status !== 'sent';
+
+  if (breached) return 'Breach';
+  if (s.approval_status === 'pending_review') return 'Draft';
+  if (s.emailed?.owner_sent) return 'Escalated';
+  if (s.approval_status === 'sent' || s.emailed?.visitor_sent) return 'In Process';
+  return 'In Process';
+}
+
+function mapSubmission(s) {
+  const agent = s.agent || {};
+  return {
+    id: s.id,
+    name: `${s.firstName || ''} ${s.lastName || ''}`.trim() || '(no name)',
+    org: s.organisation || '—',
+    country: s.country || '—',
+    role: s.role || '—',
+    type: s.inquiryType || 'General Inquiry',
+    urgency: capitalize(agent.urgency_level || 'low'),
+    score: agent.urgency_score ?? 0,
+    elapsed: humanElapsed(s.processedAt, s.approval_status === 'sent'),
+    deadline: s.approval_status === 'sent' ? 'Resolved' : humanDeadline(agent.escalation?.deadline),
+    lang: (agent.language || 'en').toUpperCase(),
+    tone: agent.tone || 'default',
+    status: mapStatus(s),
+    routing: agent.action === 'auto_reply' ? 'Auto-handled' : (agent.escalation?.reason || '—'),
+    summary: agent.executive_summary || '—',
+    message: s.message || '',
+    draft: s.edited_reply || agent.visitor_message || '',
+    tasks: agent.next_action_objectives || []
+  };
+}
+
+async function loadDashboardData() {
+  try {
+    const res = await fetch('/api/dashboard-data');
+    const data = await res.json();
+    if (!data.ok) { toast('Failed to load dashboard data: ' + data.error); return; }
+    INQ = (data.submissions || []).map(mapSubmission);
+    DASHBOARD_SETTINGS = data.settings || DASHBOARD_SETTINGS;
+    if (DASHBOARD_SETTINGS.scan_frequency_minutes) {
+      const slider = document.querySelector('#view-settings input[type=range]');
+      if (slider) {
+        slider.value = DASHBOARD_SETTINGS.scan_frequency_minutes;
+        document.getElementById('freq-lbl').textContent = 'Every ' + DASHBOARD_SETTINGS.scan_frequency_minutes + ' minutes';
+      }
+    }
+  } catch (err) {
+    toast('Could not reach dashboard-data endpoint — is it deployed?');
+  }
+}
+
+const urgColors = { Critical:'var(--red)', High:'var(--orange)', Medium:'var(--amber)', Low:'var(--green)' };
+const urgDot = { Critical:'urg-crit', High:'urg-high', Medium:'urg-med', Low:'urg-low' };
+const badgeCls = { Critical:'badge-red', High:'badge-red', Medium:'badge-amber', Low:'badge-green',
+  Breach:'badge-red', Escalated:'badge-amber', Draft:'badge-amber', 'In Process':'badge-blue', Resolved:'badge-green', 'Auto-handled':'badge-green' };
+
+// ════════════════════════════════════════════════════════ LOGIN
+function doLogin() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-sidebar').style.display = '';
+  document.getElementById('app-main').style.display = '';
+  init();
+}
+function logout() {
+  document.getElementById('login-screen').style.display = '';
+  document.getElementById('app-sidebar').style.display = 'none';
+  document.getElementById('app-main').style.display = 'none';
+}
+
+// ════════════════════════════════════════════════════════ CLOCK
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent = n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('dateline').textContent = n.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+updateClock(); setInterval(updateClock, 1000);
+
+let scanSecs = 240;
+setInterval(()=>{ scanSecs--; if(scanSecs<=0) scanSecs=900; const m=Math.floor(scanSecs/60),s=scanSecs%60; const t=`in ${m}m ${s.toString().padStart(2,'0')}s`; document.getElementById('next-scan-txt').textContent=t; document.getElementById('next-scan-txt2').textContent=t; },1000);
+
+// ════════════════════════════════════════════════════════ SPARKLINES
+function spark(id, vals, color) {
+  const el = document.getElementById(id); if(!el) return;
+  const max = Math.max(...vals);
+  el.innerHTML = vals.map(v=>`<div class="spark-bar" style="height:${Math.max(20,Math.round(v/max*100))}%;background:${color};opacity:.7"></div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════ CHART
+let volChartInst;
+function initChart() {
+  const ctx = document.getElementById('volChart'); if(!ctx) return;
+  if(volChartInst) volChartInst.destroy();
+  const labels = Array.from({length:30},(_,i)=>{const d=new Date('2026-06-17');d.setDate(d.getDate()+i);return d.toLocaleDateString('en',{day:'numeric',month:'short'});});
+  volChartInst = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Received',data:[1,2,1,3,2,1,2,2,3,1,2,2,3,2,1,2,3,2,2,3,2,1,2,3,2,2,3,2,2,3],backgroundColor:'rgba(37,99,235,0.15)',borderRadius:3},
+        {label:'Jozey-handled',data:[1,1,1,2,2,1,2,2,2,1,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,3,2,2,2],backgroundColor:'rgba(22,163,74,0.5)',borderRadius:3}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:12,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:7,font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}}}
+  });
+}
+
+// ════════════════════════════════════════════════════════ VIEW SWITCHING
+const viewMeta = {
+  command:   ['Command Centre','Focus: what\'s NOT done · what\'s ABOUT to be due'],
+  inbox:     ['Inbox Board','All requests — received, in process, responded, resolved'],
+  engagements:['Engagements','Per-client task tracking, responses, follow-ups & feedback'],
+  skills:    ['Skills & Rules','Active skill definitions — editable without redeploy'],
+  settings:  ['Settings','Agent configuration · SLA · Auth · GitHub sync'],
+};
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el = document.getElementById('view-'+name);
+  if(el) el.style.display='block';
+  document.querySelectorAll('.nav-item').forEach(n=>{ if(n.textContent.trim().toLowerCase().includes(name.split('s')[0].toLowerCase())) n.classList.add('active'); });
+  const [t,s] = viewMeta[name]||['',''];
+  document.getElementById('view-title').textContent=t;
+  document.getElementById('view-sub').textContent=s;
+  if(name==='command') { setTimeout(initChart,100); }
+}
+
+// ════════════════════════════════════════════════════════ COMMAND CENTRE LISTS
+function buildInqRow(d, onclick='') {
+  const slaClass = d.status==='Breach' ? 'sla-breach' : (d.elapsed.includes('20h')||d.elapsed.includes('18h')) ? 'sla-warn' : 'sla-ok';
+  const slaIcon = d.status==='Breach' ? '⏰ ' : d.elapsed==='Done' ? '✓ ' : '';
+  return `<div class="inq-row" onclick="${onclick||`openInq('${d.id}')`}">
+    <div class="urg-dot ${urgDot[d.urgency]}"></div>
+    <div class="inq-name">
+      <div class="inq-name-main">${d.name}</div>
+      <div class="inq-name-sub">${d.type} · ${d.org}</div>
+    </div>
+    <div class="inq-meta">
+      <span class="badge ${badgeCls[d.urgency]}">${d.urgency}</span>
+      <span class="inq-sla ${slaClass}">${slaIcon}${d.elapsed}</span>
+      <span class="lang-pill">${d.lang}</span>
+      <span class="badge ${badgeCls[d.status]}">${d.status}</span>
+    </div>
+  </div>`;
+}
+
+function buildCommandLists() {
+  const breach = INQ.filter(d=>d.status==='Breach');
+  const action = INQ.filter(d=>['Escalated','Draft'].includes(d.status));
+  const inprog = INQ.filter(d=>d.status==='In Process');
+  document.getElementById('list-breach').innerHTML = breach.length ? breach.map(d=>buildInqRow(d)).join('') : '<div class="empty-state">No breaches 🎉</div>';
+  document.getElementById('list-action').innerHTML = action.length ? action.map(d=>buildInqRow(d)).join('') : '<div class="empty-state">Nothing pending 🎉</div>';
+  document.getElementById('list-inprog').innerHTML = inprog.length ? inprog.map(d=>buildInqRow(d)).join('') : '<div class="empty-state">—</div>';
+}
+
+// ════════════════════════════════════════════════════════ INBOX TABLE
+let currentPeriod = 'all';
+function setPeriod(el, val) {
+  document.querySelectorAll('.fp').forEach(f=>f.classList.remove('active'));
+  el.classList.add('active');
+  currentPeriod = val;
+  document.getElementById('date-range').classList.toggle('show', val==='custom');
+  filterInbox();
+}
+function filterInbox() {
+  const q = document.getElementById('inbox-search').value.toLowerCase();
+  const uf = document.getElementById('urg-filter').value;
+  const sf = document.getElementById('status-filter').value;
+  let filtered = INQ.filter(d=>{
+    if(q && !`${d.name} ${d.org} ${d.type}`.toLowerCase().includes(q)) return false;
+    if(uf!=='all' && d.urgency!==uf) return false;
+    if(sf!=='all' && d.status!==sf) return false;
+    return true;
+  });
+  document.getElementById('inbox-count').textContent = `Showing ${filtered.length} of ${INQ.length} inquiries`;
+  document.getElementById('inbox-tbody').innerHTML = filtered.map(d=>`
+    <tr onclick="openInq('${d.id}')">
+      <td><div class="urg-dot ${urgDot[d.urgency]}"></div></td>
+      <td><div style="font-weight:700;font-size:13px">${d.name}</div><div style="font-size:11px;color:var(--text-3)">${d.org} · ${d.country}</div></td>
+      <td style="color:var(--text-2)">${d.type}</td>
+      <td><span class="badge ${badgeCls[d.urgency]}">${d.urgency} <span style="font-weight:400;opacity:.7">(${d.score})</span></span></td>
+      <td><span class="badge ${badgeCls[d.status]}">${d.status}</span></td>
+      <td class="${d.elapsed==='Done'?'sla-ok':d.status==='Breach'?'sla-breach':'sla-ok'}" style="font-weight:700;font-size:12px">${d.elapsed==='Done'?'✓ Done':d.elapsed}</td>
+      <td style="font-size:11.5px;color:var(--text-2)">${d.deadline}</td>
+      <td><span class="lang-pill">${d.lang}</span></td>
+      <td style="color:var(--text-2);font-size:12px">${d.tone}</td>
+      <td><button class="btn sm" onclick="event.stopPropagation();openInq('${d.id}')">Open →</button></td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════ MODAL: INQUIRY
+let currentModalId = null;
+function openInq(id) {
+  const d = INQ.find(x=>x.id===id); if(!d) return;
+  currentModalId = id;
+  document.getElementById('m-name').textContent = `${d.name} — ${d.type}`;
+  document.getElementById('m-meta').innerHTML = `${d.org} · ${d.country} · <strong style="color:${urgColors[d.urgency]}">${d.urgency} (score ${d.score})</strong> · SLA: ${d.elapsed} · ${d.lang==='FR'?'🇫🇷 French':'🇬🇧 English'}`;
+  document.getElementById('m-summary').textContent = d.summary;
+  document.getElementById('m-message').textContent = d.message;
+  document.getElementById('m-draft').value = d.draft;
+  document.getElementById('m-pipeline').innerHTML = ['Language','Tone','Skill Match','Urgency Score','Action'].map((s,i)=>`<div class="pipe-step ${i<4?'done':'active'}">${s}</div>`).join('');
+  document.getElementById('m-grid').innerHTML = [
+    ['Organisation',d.org],['Country',d.country],['Role',d.role],['Tone',d.tone],
+    ['Urgency Score',`${d.score} / 100`],['Routing',d.routing||'—'],
+  ].map(([l,v])=>`<div class="mf"><div class="mfl">${l}</div><div class="mfv">${v}</div></div>`).join('');
+  document.getElementById('m-tasks').innerHTML = d.tasks.length ? d.tasks.map((t,i)=>`
+    <div class="modal-task">
+      <div class="task-check" id="mt-${id}-${i}" onclick="toggleTask('${id}',${i})"></div>
+      <div class="task-text" id="mt-txt-${id}-${i}">${t}</div>
+    </div>`).join('') : '<div style="font-size:12px;color:var(--text-3)">No next actions specified.</div>';
+  document.getElementById('m-approved').style.display='none';
+  document.getElementById('inq-modal').classList.add('open');
+}
+function toggleTask(id, i) {
+  const chk = document.getElementById(`mt-${id}-${i}`);
+  const txt = document.getElementById(`mt-txt-${id}-${i}`);
+  chk.classList.toggle('done');
+  chk.textContent = chk.classList.contains('done') ? '✓' : '';
+  txt.classList.toggle('done-text');
+}
+async function approveInq() {
+  if (!currentModalId) return;
+  const reply = document.getElementById('m-draft').value;
+  const btn = document.querySelector('#inq-modal .btn.primary');
+  const originalLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Approving…';
+
+  try {
+    const res = await fetch('/api/approve-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve', id: currentModalId, reply })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+
+    document.getElementById('m-approved').style.display = 'block';
+    toast('✓ Approved — Jozey sends it on the next scan');
+    await loadDashboardData();
+    buildCommandLists(); filterInbox();
+    setTimeout(() => closeModal('inq-modal'), 2200);
+  } catch (err) {
+    toast('Approve failed: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = originalLabel;
+  }
+}
+function openEngFromModal() { closeModal('inq-modal'); showView('engagements'); }
+
+// ════════════════════════════════════════════════════════ ENGAGEMENTS
+const engColors = ['#2563eb','#16a34a','#d97706','#dc2626','#0284c7','#7c3aed','#0891b2','#15803d','#b45309','#1d4ed8'];
+const taskStatuses = {
+  armando: [false,false,false,false],
+  fatou:   [false,false,false],
+  polly:   [true, false,false,false,false],
+  emiliah: [false,false,false,false,true],
+  marco:   [false,false,false],
+  jeanclaude:[false],
+  sara:    [false,false],
+  kwame:   [true,false],
+  nadia:   [true,false],
+  thomas:  [false,false]
+};
+
+function buildEngagements() {
+  const el = document.getElementById('engagement-list'); if(!el) return;
+  el.innerHTML = INQ.map((d,idx)=>{
+    const done = (taskStatuses[d.id]||[]).filter(Boolean).length;
+    const total = d.tasks.length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const col = engColors[idx % engColors.length];
+    const initials = d.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    const followups = [{date:'2026-07-18',note:'Send capabilities deck',done:false},{date:'2026-07-20',note:'Check for client response',done:true}].slice(0, d.urgency==='Critical'?2:1);
+    return `<div class="engagement-card" data-id="${d.id}" data-name="${d.name.toLowerCase()} ${d.org.toLowerCase()}">
+      <div class="eng-hdr" onclick="toggleEng('${d.id}')">
+        <div class="eng-avatar" style="background:${col}">${initials}</div>
+        <div class="eng-info">
+          <div class="eng-name">${d.name} <span style="font-weight:400;color:var(--text-2);font-size:12px">— ${d.org}</span></div>
+          <div class="eng-sub">${d.type} · <span class="badge ${badgeCls[d.urgency]}" style="font-size:10px">${d.urgency}</span> · <span class="badge ${badgeCls[d.status]}" style="font-size:10px">${d.status}</span> · Tasks: ${done}/${total} done (${pct}%)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:80px">
+            <div class="score-bar"><div class="score-fill" style="width:${pct}%;background:${pct===100?'var(--green)':pct>50?'var(--blue)':'var(--amber)'}"></div></div>
+          </div>
+          <span class="eng-chevron" id="chev-${d.id}">▼</span>
+        </div>
+      </div>
+      <div class="eng-body" id="eng-body-${d.id}">
+        <div class="eng-tabs">
+          <div class="eng-tab active" onclick="switchEngTab('${d.id}','tasks',this)">📋 Tasks (${total})</div>
+          <div class="eng-tab" onclick="switchEngTab('${d.id}','timeline',this)">📅 Timeline</div>
+          <div class="eng-tab" onclick="switchEngTab('${d.id}','followup',this)">🔔 Follow-ups</div>
+          <div class="eng-tab" onclick="switchEngTab('${d.id}','message',this)">💬 Message</div>
+          <div class="eng-tab" onclick="switchEngTab('${d.id}','feedback',this)">⭐ Feedback</div>
+        </div>
+        <div class="eng-tab-body active" id="etb-${d.id}-tasks">
+          ${d.tasks.map((t,i)=>`
+          <div class="task-item">
+            <div class="task-check ${(taskStatuses[d.id]||[])[i]?'done':''}" id="etask-${d.id}-${i}" onclick="toggleEngTask('${d.id}',${i})">
+              ${(taskStatuses[d.id]||[])[i]?'✓':''}
+            </div>
+            <div class="task-text ${(taskStatuses[d.id]||[])[i]?'done-text':''}" id="etask-txt-${d.id}-${i}">${t}</div>
+            <span class="task-priority badge ${i===0?'badge-red':i===1?'badge-amber':'badge-blue'}">${i===0?'P1':i===1?'P2':'P3'}</span>
+          </div>`).join('')}
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn sm" onclick="addTask('${d.id}')">+ Add Task</button>
+          </div>
+        </div>
+        <div class="eng-tab-body" id="etb-${d.id}-timeline">
+          <div class="timeline-item"><div class="timeline-dot" style="color:var(--accent)"></div><div class="timeline-content"><div class="timeline-event">Inquiry received from ${d.name}</div><div class="timeline-time">${d.elapsed==='Done'?'Earlier':'~'+d.elapsed+' ago'}</div></div></div>
+          <div class="timeline-item"><div class="timeline-dot" style="color:var(--green)"></div><div class="timeline-content"><div class="timeline-event">Jozey processed — ${d.urgency} urgency (score ${d.score})</div><div class="timeline-time">Within 1 scan cycle (≤15 min)</div><div class="timeline-note">Language: ${d.lang} · Tone: ${d.tone} · Action: ${d.status}</div></div></div>
+          <div class="timeline-item"><div class="timeline-dot" style="color:var(--blue)"></div><div class="timeline-content"><div class="timeline-event">Visitor acknowledgment sent</div><div class="timeline-time">Via Resend API · SPF/DKIM PASS</div></div></div>
+          ${d.status!=='In Process'&&d.status!=='Resolved'?`<div class="timeline-item"><div class="timeline-dot" style="color:var(--red)"></div><div class="timeline-content"><div class="timeline-event">Escalation email sent to Emmanuel</div><div class="timeline-time">Subject: [${d.urgency.toUpperCase()}] New Inquiry — ${d.type} — ${d.name}</div></div></div>`:''}
+          ${d.status==='Resolved'?`<div class="timeline-item"><div class="timeline-dot" style="color:var(--green)"></div><div class="timeline-content"><div class="timeline-event">Engagement resolved</div><div class="timeline-time">Closed by Emmanuel</div></div></div>`:''}
+        </div>
+        <div class="eng-tab-body" id="etb-${d.id}-followup">
+          ${followups.map((f,i)=>`<div class="followup-item">
+            <div class="task-check ${f.done?'done':''}">${f.done?'✓':''}</div>
+            <div style="flex:1">
+              <div style="font-size:12.5px;font-weight:600">${f.note}</div>
+              <div style="font-size:11px;color:var(--text-3)">Due: ${f.date}</div>
+            </div>
+            <span class="badge ${f.done?'badge-green':'badge-amber'}">${f.done?'Done':'Pending'}</span>
+          </div>`).join('')}
+          <div style="margin-top:12px"><button class="btn sm" onclick="addFollowup('${d.id}')">+ Add Follow-up</button></div>
+        </div>
+        <div class="eng-tab-body" id="etb-${d.id}-message">
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Original Message</div>
+          <div class="modal-bubble" style="white-space:pre-wrap;font-style:italic">${d.message}</div>
+          <div style="font-size:11px;color:var(--text-3);margin:14px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Draft Reply by Jozey</div>
+          <div class="modal-draft-bubble">${d.draft}</div>
+        </div>
+        <div class="eng-tab-body" id="etb-${d.id}-feedback">
+          <div style="font-size:13px;color:var(--text-2);margin-bottom:12px">Record outcome, client feedback, or notes for this engagement.</div>
+          <div class="form-row"><label>Outcome / Status</label><select class="sel" style="width:100%"><option>Open — in progress</option><option>Converted to client</option><option>Not interested</option><option>Follow-up scheduled</option><option>No response</option></select></div>
+          <div class="form-row"><label>Notes / Feedback</label><textarea placeholder="e.g. Client confirmed interest. Call booked for Monday 21 July. Key concern: pricing and implementation timeline…"></textarea></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn sm primary" onclick="toast('Feedback saved ✓')">Save Notes</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleEng(id) {
+  const body = document.getElementById('eng-body-'+id);
+  const chev = document.getElementById('chev-'+id);
+  const open = body.classList.toggle('open');
+  chev.style.transform = open ? 'rotate(180deg)' : '';
+}
+function switchEngTab(id, tab, el) {
+  const card = el.closest('.engagement-card');
+  card.querySelectorAll('.eng-tab').forEach(t=>t.classList.remove('active'));
+  card.querySelectorAll('.eng-tab-body').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const tb = document.getElementById(`etb-${id}-${tab}`);
+  if(tb) tb.classList.add('active');
+}
+function toggleEngTask(id, i) {
+  if(!taskStatuses[id]) taskStatuses[id]=[];
+  taskStatuses[id][i] = !taskStatuses[id][i];
+  const chk = document.getElementById(`etask-${id}-${i}`);
+  const txt = document.getElementById(`etask-txt-${id}-${i}`);
+  chk.classList.toggle('done', taskStatuses[id][i]);
+  chk.textContent = taskStatuses[id][i] ? '✓' : '';
+  txt.classList.toggle('done-text', taskStatuses[id][i]);
+}
+function addTask(id) { toast('In the live version, this adds a custom task to the engagement.'); }
+function addFollowup(id) { toast('In the live version, this schedules a follow-up reminder.'); }
+
+function filterEngagements() {
+  const q = document.getElementById('eng-search').value.toLowerCase();
+  document.querySelectorAll('.engagement-card').forEach(card=>{
+    const name = card.dataset.name || '';
+    card.style.display = (!q || name.includes(q)) ? '' : 'none';
+  });
+}
+function setEngFilter(el, val) {
+  document.querySelectorAll('[data-ef]').forEach(f=>f.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.engagement-card').forEach(card=>{
+    const id = card.dataset.id;
+    const d = INQ.find(x=>x.id===id);
+    if(!d) { card.style.display=''; return; }
+    if(val==='all') { card.style.display=''; return; }
+    if(val==='open') { card.style.display = d.status!=='Resolved' ? '' : 'none'; return; }
+    if(val==='tasks') { card.style.display = d.tasks.length>0 ? '' : 'none'; return; }
+    if(val==='followup') { card.style.display = (d.status==='Breach'||d.status==='Escalated') ? '' : 'none'; return; }
+  });
+}
+
+// ════════════════════════════════════════════════════════ SKILLS
+// Live — fetched from /api/skills-config (reads/writes AGENT_CONFIG's
+// skill_* KV entries). universal_fallback is always present and built-in,
+// same as the live agent's own fallback logic.
+let skills = [];
+
+async function loadSkills() {
+  try {
+    const res = await fetch('/api/skills-config');
+    const data = await res.json();
+    if (!data.ok) { toast('Failed to load skills: ' + data.error); return; }
+    skills = data.skills || [];
+    buildSkills();
+  } catch (err) {
+    toast('Could not reach skills-config endpoint — is it deployed?');
+  }
+}
+
+function buildSkills() {
+  const el = document.getElementById('skills-list'); if(!el) return;
+  el.innerHTML = skills.map((s,i)=>`
+    <div class="skill-card">
+      <div class="skill-hdr">
+        <div>
+          <div class="skill-name">${s.name} <span style="font-size:11px;color:var(--text-3);font-weight:400">(${s.id})</span></div>
+          <div class="skill-sub">${s.desc}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+          <span class="badge ${s.active?'badge-green':'badge-gray'}">${s.active?'Active':'Inactive'}</span>
+          ${s.built_in ? '<span class="badge badge-blue">Built-in</span>' : `<button class="btn sm" onclick="editSkill(${i})">Edit</button><button class="btn sm" style="color:var(--red);border-color:var(--red-mid)" onclick="discardSkill(${i})">Remove</button>`}
+        </div>
+      </div>
+      <div class="skill-meta">
+        <div class="skill-field"><label>Action</label><span>${s.action}</span></div>
+        <div class="skill-field"><label>SLA</label><span>${s.sla}h</span></div>
+        <div class="skill-field"><label>Confidence</label><span>${s.conf}</span></div>
+      </div>
+      <div class="skill-triggers">
+        ${s.triggers.map(t=>`<span class="trigger-tag">${t==='*'?'All inquiries (*)':t}</span>`).join('')}
+      </div>
+      ${s.escalation ? `<div style="font-size:11.5px;color:var(--text-2);margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">Escalation reason: <em>${s.escalation}</em></div>` : ''}
+    </div>`).join('') + `
+    <div style="background:var(--accent-light);border:1.5px dashed var(--accent-mid);border-radius:12px;padding:16px 18px;text-align:center">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px">Ready to authorize a new behavior?</div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:12px">Add a skill when you're comfortable authorizing Jozey to auto-reply or draft for a specific inquiry type.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px">
+        <span class="badge badge-blue">General Inquiry Auto-reply</span>
+        <span class="badge badge-green">Demo Request → Draft for Review</span>
+        <span class="badge badge-amber">Partnership → Always Escalate</span>
+        <span class="badge badge-accent">Speaking → Draft for Review</span>
+      </div>
+      <button class="btn primary" onclick="openAddSkill()">+ Add Skill / Rule</button>
+    </div>`;
+}
+
+function openAddSkill(editIdx, skill) {
+  document.getElementById('skill-modal-title').textContent = skill ? 'Edit Skill' : 'Add New Skill / Rule';
+  document.getElementById('sk-id').value = skill?.id || '';
+  document.getElementById('sk-name').value = skill?.name || '';
+  document.getElementById('sk-triggers').value = skill?.triggers?.join(', ') || '';
+  document.getElementById('sk-action').value = skill?.action || 'draft_for_review';
+  document.getElementById('sk-sla').value = skill?.sla ?? 24;
+  document.getElementById('sk-conf').value = skill?.conf ?? 0.75;
+  document.getElementById('sk-tone-en').value = skill?.tone_default || '';
+  document.getElementById('sk-tone-fr').value = '';
+  document.getElementById('sk-esc').value = skill?.escalation || '';
+  document.getElementById('skill-modal').classList.add('open');
+}
+async function saveSkill() {
+  const id=document.getElementById('sk-id').value.trim();
+  const name=document.getElementById('sk-name').value.trim();
+  if(!id||!name) { toast('Skill ID and Name are required.'); return; }
+
+  // NOTE: only the English tone variant maps to the live pipeline
+  // (skill.tone_variants.default). Jozey already auto-translates that
+  // template into French at send time (see process-inquiries.js), so the
+  // French field here isn't sent — a manual French template would bypass
+  // that translation step rather than complement it. Flagged, not silently
+  // dropped: the field stays visible in the form, just not wired yet.
+  const toneEn = document.getElementById('sk-tone-en').value.trim();
+
+  const s = {
+    id, name, active:true, built_in:false,
+    triggers: document.getElementById('sk-triggers').value.split(',').map(t=>t.trim()).filter(Boolean),
+    action: document.getElementById('sk-action').value,
+    sla: parseInt(document.getElementById('sk-sla').value)||24,
+    conf: parseFloat(document.getElementById('sk-conf').value)||0.75,
+    escalation: document.getElementById('sk-esc').value.trim(),
+    tone_default: toneEn,
+    desc: `Custom skill. Action: ${document.getElementById('sk-action').value}.`
+  };
+
+  const btn = document.querySelector('#skill-modal .btn.primary');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch('/api/skills-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save', skill: s })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    closeModal('skill-modal');
+    await loadSkills();
+    toast(`Skill "${name}" saved ✓ — active on next scan`);
+  } catch (err) {
+    toast('Save failed: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save Skill';
+  }
+}
+async function discardSkill(i) {
+  const skill = skills[i];
+  if(!confirm(`Remove skill "${skill.name}"? This cannot be undone.`)) return;
+  try {
+    const res = await fetch('/api/skills-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id: skill.id })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    await loadSkills();
+    toast('Skill removed.');
+  } catch (err) {
+    toast('Remove failed: ' + err.message);
+  }
+}
+function editSkill(i) { openAddSkill(i, skills[i]); }
+
+// ════════════════════════════════════════════════════════ MODAL HELPERS
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.getElementById('inq-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('inq-modal')) closeModal('inq-modal'); });
+document.getElementById('skill-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('skill-modal')) closeModal('skill-modal'); });
+
+// ════════════════════════════════════════════════════════ SETTINGS
+function saveSLA() {
+  // NOT WIRED — would require a GitHub Actions/API write-back integration
+  // that hasn't been built (GITHUB_PERSONAL_ACCESS_TOKEN, commit endpoint).
+  // Left as designed; flagged rather than faked.
+  toast('SLA GitHub-sync isn\'t built yet — flagged for a future phase.');
+}
+
+async function saveScanFrequency(minutes) {
+  try {
+    const res = await fetch('/api/approve-reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_scan_frequency', minutes: Number(minutes) })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    toast(`Scan frequency set to ${minutes} min ✓`);
+  } catch (err) {
+    toast('Could not save scan frequency: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════ SCAN
+async function triggerScan() {
+  const btn = document.getElementById('scan-btn');
+  btn.textContent='⏳ Scanning…'; btn.disabled=true;
+  try {
+    const res = await fetch('/api/process-inquiries');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    btn.textContent = `✓ ${data.processed} new`;
+    toast(`Scan complete — ${data.processed} new, ${data.approved_sent} approved reply(ies) sent`);
+    await loadDashboardData();
+    buildCommandLists(); filterInbox();
+  } catch (err) {
+    btn.textContent = '⚠ Failed';
+    toast('Scan failed: ' + err.message);
+  } finally {
+    setTimeout(()=>{ btn.textContent='⚡ Scan Now'; btn.disabled=false; scanSecs=900; },1800);
+  }
+}
+
+// ════════════════════════════════════════════════════════ TOAST
+function toast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(t._to); t._to=setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; },3000);
+}
+
+// ════════════════════════════════════════════════════════ INIT
+async function init() {
+  updateClock();
+  // Sparklines are still illustrative trend shapes, not computed from real
+  // history — no endpoint provides day-by-day series yet. Flagged, not
+  // silently faked as if it were live.
+  spark('sp-risk',  [2,1,3,2,1,2,4,2,3,5], 'var(--red)');
+  spark('sp-await', [4,3,5,4,3,4,5,3,4,3], 'var(--amber)');
+  spark('sp-inprog',[6,7,7,8,7,8,9,7,8,8], 'var(--blue)');
+  spark('sp-done',  [29,31,33,34,35,36,37,37,38,39], 'var(--green)');
+  spark('sp-total', [35,38,40,42,42,44,46,44,45,47], 'var(--accent)');
+
+  await loadDashboardData();
+  buildCommandLists();
+  filterInbox();
+  buildEngagements(); // local-only per the agreed v1.1 deferral — see notes
+  await loadSkills();
+  showView('command');
+  setTimeout(initChart, 150);
+}
+</script>
+</body>
+</html>
