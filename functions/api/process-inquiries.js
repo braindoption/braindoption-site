@@ -45,43 +45,71 @@ async function handle(context) {
     const languageStrings = await loadLanguageStrings(env);
     const skills = await loadSkills(env);
 
-    const list = await env.FORM_SUBMISSIONS.list();
+    // ---- PASS A: send any dashboard-approved draft replies ------------
+    // Runs every invocation, regardless of scan_frequency_minutes — once
+    // Emmanuel has approved a reply, it should go out on the next tick,
+    // not wait for the classification throttle below.
+    const sent = await sendApprovedReplies(settings, env);
+
+    // ---- PASS B: classify new submissions, throttled ------------------
+    const scanDue = isScanDue(settings);
     const results = [];
 
-    for (const key of list.keys) {
-      const raw = await env.FORM_SUBMISSIONS.get(key.name);
-      if (!raw) continue;
+    if (scanDue) {
+      const list = await env.FORM_SUBMISSIONS.list();
 
-      const submission = JSON.parse(raw);
-      if (submission.processed) continue; // already handled
+      for (const key of list.keys) {
+        const raw = await env.FORM_SUBMISSIONS.get(key.name);
+        if (!raw) continue;
 
-      const outcome = await processSubmission(
-        submission,
-        settings,
-        languageStrings,
-        skills,
-        env
-      );
-      const emailResult = await sendEmails(submission, outcome, settings, env);
+        const submission = JSON.parse(raw);
+        if (submission.processed) continue; // already handled
 
-      const updated = {
-        ...submission,
-        processed: true,
-        processedAt: new Date().toISOString(),
-        agent: outcome,
-        emailed: emailResult,
-      };
+        const outcome = await processSubmission(
+          submission,
+          settings,
+          languageStrings,
+          skills,
+          env
+        );
 
-      await env.FORM_SUBMISSIONS.put(key.name, JSON.stringify(updated));
-      results.push({
-        key: key.name,
-        urgency: outcome.urgency_level,
-        action: outcome.action,
-      });
+        // draft_for_review holds for Emmanuel's approval instead of
+        // auto-sending; everything else keeps the existing behavior.
+        const isDraftForReview = outcome.action === "draft_for_review";
+        const emailResult = isDraftForReview
+          ? { visitor_sent: false, owner_sent: false, errors: [], held_for_review: true }
+          : await sendEmails(submission, outcome, settings, env);
+
+        const updated = {
+          ...submission,
+          processed: true,
+          processedAt: new Date().toISOString(),
+          agent: outcome,
+          emailed: emailResult,
+          approval_status: isDraftForReview ? "pending_review" : submission.approval_status ?? null,
+          edited_reply: submission.edited_reply ?? null,
+        };
+
+        await env.FORM_SUBMISSIONS.put(key.name, JSON.stringify(updated));
+        results.push({
+          key: key.name,
+          urgency: outcome.urgency_level,
+          action: outcome.action,
+        });
+      }
+
+      await touchLastScanned(env);
     }
 
     return new Response(
-      JSON.stringify({ ok: true, processed: results.length, results }),
+      JSON.stringify({
+        ok: true,
+        scan_ran: scanDue,
+        processed: results.length,
+        results,
+        approved_sent: sent.length,
+        sent,
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
@@ -90,6 +118,87 @@ async function handle(context) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard — approve-for-send pickup, and configurable scan throttle
+// ---------------------------------------------------------------------------
+
+// scan_frequency_minutes / last_scanned_at live once in AGENT_CONFIG.settings
+// (a single global control), not duplicated onto every submission record —
+// see transition notes. Defaults keep old behavior (scan every run) if the
+// dashboard hasn't set a value yet.
+function isScanDue(settings) {
+  const frequencyMinutes = Number(settings.scan_frequency_minutes) || 0;
+  if (!frequencyMinutes) return true; // not configured yet — scan every run
+
+  const last = settings.last_scanned_at ? new Date(settings.last_scanned_at) : null;
+  if (!last || isNaN(last.getTime())) return true;
+
+  const dueAt = new Date(last.getTime() + frequencyMinutes * 60 * 1000);
+  return new Date() >= dueAt;
+}
+
+async function touchLastScanned(env) {
+  const raw = await env.AGENT_CONFIG.get("settings");
+  if (!raw) return;
+  const settings = JSON.parse(raw);
+  settings.last_scanned_at = new Date().toISOString();
+  await env.AGENT_CONFIG.put("settings", JSON.stringify(settings));
+}
+
+// Picks up submissions Emmanuel marked "approved_for_send" in the dashboard
+// (via approve-reply.js) and sends the — possibly edited — reply. This is
+// what activates the draft_for_review action type end to end.
+async function sendApprovedReplies(settings, env) {
+  const list = await env.FORM_SUBMISSIONS.list();
+  const sent = [];
+
+  for (const key of list.keys) {
+    const raw = await env.FORM_SUBMISSIONS.get(key.name);
+    if (!raw) continue;
+
+    const submission = JSON.parse(raw);
+    if (submission.approval_status !== "approved_for_send") continue;
+    if (!submission.agent) continue; // safety: no classification to send
+
+    const replyText = submission.edited_reply || submission.agent.visitor_message;
+
+    try {
+      await sendResendEmail(env, {
+        from: `${settings.agent_name} <${settings.agent_identity_email}>`,
+        to: submission.email,
+        subject: `Re: Your inquiry to BrainDoption (${submission.inquiryType || "General Inquiry"})`,
+        text: replyText,
+      });
+
+      const updated = {
+        ...submission,
+        approval_status: "sent",
+        emailed: {
+          ...(submission.emailed || {}),
+          visitor_sent: true,
+          held_for_review: false,
+          sent_at: new Date().toISOString(),
+        },
+      };
+      await env.FORM_SUBMISSIONS.put(key.name, JSON.stringify(updated));
+      sent.push(key.name);
+    } catch (err) {
+      // Leave approval_status as-is so it retries next run; don't silently
+      // mark as sent on failure.
+      const updated = {
+        ...submission,
+        emailed: {
+          ...(submission.emailed || {}),
+          errors: [...(submission.emailed?.errors || []), `approved-send failed: ${err.message}`],
+        },
+      };
+      await env.FORM_SUBMISSIONS.put(key.name, JSON.stringify(updated));
+    }
+  }
+
+  return sent;
 }
 
 // ---------------------------------------------------------------------------
